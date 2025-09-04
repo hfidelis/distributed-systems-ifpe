@@ -1,0 +1,132 @@
+<!-- @hfidelis -->
+
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Notificações em Tempo Real</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="max-w-5xl mx-auto p-6">
+    <h1 class="text-2xl font-bold mb-4">Protótipo: Notificações de Pedido</h1>
+
+    <div class="bg-white rounded-2xl shadow p-4 mb-6">
+      <form id="simForm" class="flex flex-wrap gap-3 items-end">
+        <div>
+          <label class="block text-sm font-medium">Nº de pedidos</label>
+          <input id="nOrders" type="number" value="10" min="1" max="5000" class="border rounded px-3 py-2" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium">Delay mínimo (ms)</label>
+          <input id="minDelay" type="number" value="300" min="0" class="border rounded px-3 py-2" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium">Delay máximo (ms)</label>
+          <input id="maxDelay" type="number" value="1200" min="0" class="border rounded px-3 py-2" />
+        </div>
+        <button type="submit" class="bg-black text-white rounded-xl px-4 py-2" disabled>Iniciar simulação</button>
+      </form>
+      <p id="statusMsg" class="text-sm text-gray-600 mt-2">Conectando...</p>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow p-4">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-lg font-semibold">Pedidos</h2>
+        <input id="filterInput" placeholder="Filtrar por Order ID" class="border rounded px-3 py-2" />
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm" id="ordersTable">
+          <thead>
+            <tr class="bg-gray-100">
+              <th class="text-left px-3 py-2">Order ID</th>
+              <th class="text-left px-3 py-2">Status</th>
+              <th class="text-left px-3 py-2">Atualizado em</th>
+            </tr>
+          </thead>
+          <tbody id="ordersBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const orders = new Map();
+
+    const statusLookup = {
+      'prepared': 'Preparado',
+      'shipped': 'Enviado',
+      'delivered': 'Entregue'
+    };
+
+    function upsertRow({order_id, status, ts}) {
+      orders.set(order_id, {status, ts});
+      const tbody = document.getElementById('ordersBody');
+      let row = document.getElementById(`row-${order_id}`);
+      const tsFmt = new Date(ts).toLocaleString();
+
+      if (!row) {
+        row = document.createElement('tr');
+        row.id = `row-${order_id}`;
+        row.innerHTML = `
+          <td class="px-3 py-2 font-mono">${order_id}</td>
+          <td class="px-3 py-2"><span class="inline-block px-2 py-1 rounded status">${statusLookup[status]}</span></td>
+          <td class="px-3 py-2">${tsFmt}</td>
+        `;
+        tbody.prepend(row);
+      } else {
+        row.children[1].querySelector('.status').textContent = statusLookup[status];
+        row.children[2].textContent = tsFmt;
+      }
+
+      const badge = row.children[1].querySelector('.status');
+      badge.className = 'inline-block px-2 py-1 rounded status';
+      if (status === 'prepared') badge.classList.add('bg-yellow-100');
+      if (status === 'shipped')  badge.classList.add('bg-blue-100');
+      if (status === 'delivered') badge.classList.add('bg-green-100');
+
+      applyFilter();
+    }
+
+    function applyFilter() {
+      const q = document.getElementById('filterInput').value.trim().toLowerCase();
+      document.querySelectorAll('#ordersBody tr').forEach(tr => {
+        const id = tr.children[0].textContent.toLowerCase();
+        tr.style.display = id.includes(q) ? '' : 'none';
+      });
+    }
+
+    document.getElementById('filterInput').addEventListener('input', applyFilter);
+
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    const ws = new WebSocket(`${proto}://${location.host}/ws`);
+    ws.onopen = () => {
+      document.getElementById('statusMsg').textContent = 'Conectado em tempo real.';
+      document.querySelector('button[type="submit"]').disabled = false;
+      setInterval(() => { try { ws.send('ping'); } catch(e) {} }, 10000);
+    };
+    ws.onmessage = (event) => {
+      try { const data = JSON.parse(event.data); upsertRow(data); } catch(e) {}
+    };
+    ws.onclose = () => { document.getElementById('statusMsg').textContent = 'Conexão encerrada. Recarregue a página.'; };
+
+    document.getElementById('simForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nOrders = parseInt(document.getElementById('nOrders').value, 10) || 1;
+      const minDelay = parseInt(document.getElementById('minDelay').value, 10) || 0;
+      const maxDelay = parseInt(document.getElementById('maxDelay').value, 10) || 0;
+
+      const res = await fetch('/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ n_orders: nOrders, min_delay_ms: minDelay, max_delay_ms: maxDelay })
+      });
+
+      const j = await res.json();
+      document.getElementById('statusMsg').textContent =
+        j.message + ' | Orders: ' + j.orders.slice(0,5).join(', ') + (j.orders.length>5 ? '…' : '');
+    });
+  </script>
+</body>
+</html>
