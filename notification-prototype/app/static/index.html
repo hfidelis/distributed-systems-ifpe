@@ -52,81 +52,128 @@
   </div>
 
   <script>
-    const orders = new Map();
+    const orders = new Map()
 
     const statusLookup = {
-      'prepared': 'Preparado',
-      'shipped': 'Enviado',
-      'delivered': 'Entregue'
-    };
+      prepared: 'Preparado',
+      shipped: 'Enviado',
+      delivered: 'Entregue'
+    }
 
-    function upsertRow({order_id, status, ts}) {
-      orders.set(order_id, {status, ts});
-      const tbody = document.getElementById('ordersBody');
-      let row = document.getElementById(`row-${order_id}`);
-      const tsFmt = new Date(ts).toLocaleString();
+    function upsertRow({ order_id, status, ts }) {
+      orders.set(order_id, { status, ts })
+
+      const tbody = document.getElementById('ordersBody')
+      let row = document.getElementById(`row-${order_id}`)
+      const tsFmt = new Date(ts).toLocaleString()
 
       if (!row) {
-        row = document.createElement('tr');
-        row.id = `row-${order_id}`;
+        row = document.createElement('tr')
+        row.id = `row-${order_id}`
         row.innerHTML = `
           <td class="px-3 py-2 font-mono">${order_id}</td>
-          <td class="px-3 py-2"><span class="inline-block px-2 py-1 rounded status">${statusLookup[status]}</span></td>
+          <td class="px-3 py-2">
+            <span class="inline-block px-2 py-1 rounded status">
+              ${statusLookup[status]}
+            </span>
+          </td>
           <td class="px-3 py-2">${tsFmt}</td>
-        `;
-        tbody.prepend(row);
+        `
+        tbody.prepend(row)
       } else {
-        row.children[1].querySelector('.status').textContent = statusLookup[status];
-        row.children[2].textContent = tsFmt;
+        row.children[1].querySelector('.status').textContent =
+          statusLookup[status]
+        row.children[2].textContent = tsFmt
       }
 
-      const badge = row.children[1].querySelector('.status');
-      badge.className = 'inline-block px-2 py-1 rounded status';
-      if (status === 'prepared') badge.classList.add('bg-yellow-100');
-      if (status === 'shipped')  badge.classList.add('bg-blue-100');
-      if (status === 'delivered') badge.classList.add('bg-green-100');
+      const badge = row.children[1].querySelector('.status')
+      badge.className = 'inline-block px-2 py-1 rounded status'
 
-      applyFilter();
+      if (status === 'prepared') badge.classList.add('bg-yellow-100')
+      if (status === 'shipped') badge.classList.add('bg-blue-100')
+      if (status === 'delivered') badge.classList.add('bg-green-100')
+
+      applyFilter()
     }
 
     function applyFilter() {
-      const q = document.getElementById('filterInput').value.trim().toLowerCase();
+      const q = document
+        .getElementById('filterInput')
+        .value.trim()
+        .toLowerCase()
+
       document.querySelectorAll('#ordersBody tr').forEach(tr => {
-        const id = tr.children[0].textContent.toLowerCase();
-        tr.style.display = id.includes(q) ? '' : 'none';
-      });
+        const id = tr.children[0].textContent.toLowerCase()
+        tr.style.display = id.includes(q) ? '' : 'none'
+      })
     }
 
-    document.getElementById('filterInput').addEventListener('input', applyFilter);
+    document
+      .getElementById('filterInput')
+      .addEventListener('input', applyFilter)
 
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws = new WebSocket(`${proto}://${location.host}/ws`);
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws'
+    const ws = new WebSocket(`${proto}://${location.host}/ws`)
+
     ws.onopen = () => {
-      document.getElementById('statusMsg').textContent = 'Conectado em tempo real.';
-      document.querySelector('button[type="submit"]').disabled = false;
-      setInterval(() => { try { ws.send('ping'); } catch(e) {} }, 10000);
-    };
-    ws.onmessage = (event) => {
-      try { const data = JSON.parse(event.data); upsertRow(data); } catch(e) {}
-    };
-    ws.onclose = () => { document.getElementById('statusMsg').textContent = 'Conexão encerrada. Recarregue a página.'; };
+      document.getElementById('statusMsg').textContent = 'Conectado em tempo real.'
+      document.querySelector('button[type="submit"]').disabled = false
 
-    document.getElementById('simForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const nOrders = parseInt(document.getElementById('nOrders').value, 10) || 1;
-      const minDelay = parseInt(document.getElementById('minDelay').value, 10) || 0;
-      const maxDelay = parseInt(document.getElementById('maxDelay').value, 10) || 0;
+      setInterval(() => {
+        try {
+          ws.send('ping')
+        } catch (e) {}
+      }, 10000)
+    }
 
-      const res = await fetch('/simulate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ n_orders: nOrders, min_delay_ms: minDelay, max_delay_ms: maxDelay })
-      });
+    ws.onmessage = event => {
+      try {
+        const data = JSON.parse(event.data)
+        upsertRow(data)
+      } catch (e) {}
+    }
 
-      const j = await res.json();
+    ws.onclose = () => {
       document.getElementById('statusMsg').textContent =
-        j.message + ' | Orders: ' + j.orders.slice(0,5).join(', ') + (j.orders.length>5 ? '…' : '');
-    });
+        'Conexão encerrada. Recarregue a página.'
+    }
+
+    document
+      .getElementById('simForm')
+      .addEventListener('submit', async e => {
+        e.preventDefault()
+
+        const nOrders = parseInt(
+          document.getElementById('nOrders').value,
+          10
+        ) || 1
+
+        const minDelay = parseInt(
+          document.getElementById('minDelay').value,
+          10
+        ) || 0
+
+        const maxDelay = parseInt(
+          document.getElementById('maxDelay').value,
+          10
+        ) || 0
+
+        const res = await fetch('/simulate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            n_orders: nOrders,
+            min_delay_ms: minDelay,
+            max_delay_ms: maxDelay
+          })
+        })
+
+        const j = await res.json()
+        document.getElementById('statusMsg').textContent =
+          `${j.message} | Orders: ${j.orders
+            .slice(0, 5)
+            .join(', ')}${j.orders.length > 5 ? '…' : ''}`
+      })
   </script>
 </body>
 </html>
