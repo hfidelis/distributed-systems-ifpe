@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Protótipo de upload MinIO</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen p-6">
+  <h1 class="text-2xl font-bold mb-4">Protótipo de upload MinIO</h1>
+
+  <div class="bg-white rounded p-4 mb-4">
+    <form id="uploadForm" class="flex gap-2 items-center">
+      <input id="fileInput" type="file" />
+      <button id="uploadBtn" type="submit" class="bg-blue-600 text-white px-3 py-1 rounded">Upload</button>
+    </form>
+    <p id="msg" class="text-sm text-gray-600 mt-2"></p>
+  </div>
+
+  <div class="bg-white rounded p-4">
+    <h2 class="font-semibold mb-2">Arquivos</h2>
+    <ul id="files" class="list-disc pl-6"></ul>
+  </div>
+
+  <script>
+    async function refreshList() {
+      const res = await fetch('/list')
+      const items = await res.json()
+      const ul = document.getElementById('files')
+      ul.innerHTML = ''
+      items.forEach(it => {
+        const li = document.createElement('li')
+        const a = document.createElement('a')
+        a.href = `/download/${encodeURIComponent(it.key)}`
+        a.target = '_blank'
+        a.textContent = `${it.key} (${Math.round(it.size/1024)} KB)`
+        li.appendChild(a)
+        ul.appendChild(li)
+      })
+    }
+
+    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const fileInput = document.getElementById('fileInput')
+      const file = fileInput.files[0]
+      if (!file) return
+      document.getElementById('msg').textContent = 'Gerando presigned URL...'
+
+      const presignResp = await fetch('/presign', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ filename: file.name, content_type: file.type || 'application/octet-stream' })
+      })
+      const { url, key } = await presignResp.json()
+      document.getElementById('msg').textContent = 'Fazendo upload para MinIO...'
+
+      const uploadRes = await fetch(url, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type || 'application/octet-stream' }
+      })
+
+      if (uploadRes.ok) {
+        document.getElementById('msg').textContent = 'Upload concluído'
+        await refreshList()
+      } else {
+        document.getElementById('msg').textContent = 'Erro no upload'
+      }
+    })
+
+    refreshList()
+  </script>
+</body>
+</html>
