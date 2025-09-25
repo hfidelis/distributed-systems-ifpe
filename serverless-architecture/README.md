@@ -75,7 +75,7 @@ Payloads:
 
 
 
-### Arquitetura do protótipo:**
+### Arquitetura do protótipo:
 
 <hr>
 
