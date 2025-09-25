@@ -32,7 +32,9 @@
 **Endpoints:**
 
 **POST** http://localhost:4566/restapis/{api_id}/dev/_user_request_/orders
+
 **POST** http://localhost:4566/restapis/{api_id}/dev/_user_request_/notifications
+
 **POST** http://localhost:4566/restapis/{api_id}/dev/_user_request_/payments
 
 Payloads:
@@ -74,7 +76,7 @@ Payloads:
 
 
 ### Arquitetura do protótipo:**
-
+<hr>
 ![Arquitetura](./docs/diagram.png)
 
 
