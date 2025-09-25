@@ -76,7 +76,9 @@ Payloads:
 
 
 ### Arquitetura do protótipo:**
+
 <hr>
+
 ![Arquitetura](./docs/diagram.png)
 
 
