@@ -29,7 +29,8 @@
     ```
     **Ao final da aplicação, será exibido o ID {api_id} da API no API Gateway.**
 4. Testar as funções Lambda via endpoint do API Gateway:
-Endpoints:
+**Endpoints:**
+
 **POST** http://localhost:4566/restapis/{api_id}/dev/_user_request_/orders
 **POST** http://localhost:4566/restapis/{api_id}/dev/_user_request_/notifications
 **POST** http://localhost:4566/restapis/{api_id}/dev/_user_request_/payments
@@ -72,7 +73,8 @@ Payloads:
 
 
 
-**Arquitetura do protótipo:**
+### Arquitetura do protótipo:**
+
 ![Arquitetura](./docs/diagram.png)
 
 
